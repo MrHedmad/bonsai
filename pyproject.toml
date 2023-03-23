@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "gbonsai"
+name = "bonsai"
 version = "0.0.1"
 authors = [
   { name="Luca Visentin", email="luca.visentin@unito.it" },
@@ -18,5 +18,5 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/pypa/sampleproject"
-"Bug Tracker" = "https://github.com/pypa/sampleproject/issues"
+"Homepage" = "https://github.com/MrHedmad/bonsai"
+"Bug Tracker" = "https://github.com/MrHedmad/bonsai/issues"
