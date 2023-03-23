@@ -1,4 +1,4 @@
-# Gbonsai
+# Bonsai
 
 This package contains a very tiny implementation of a directed tree.
 
