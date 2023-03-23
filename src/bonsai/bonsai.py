@@ -52,7 +52,6 @@ class Node:
             data (list[Any], optional): List of data to store in the node.
               Defaults to None.
         """
-        assert isinstance(parent, str), "Parent node id must be a string!"
         self.id = str(id())
         self.name = name or self.id
         self.data = data
@@ -110,7 +109,7 @@ class Tree:
         """
         if not parent:
             # We are trying to add a new root node
-            if any([node.parent is None for node in self.nodes]):
+            if any([node.parent is None for node in self.nodes.values()]):
                 root_node = self.root
                 raise DoubleRootError(f"The tree already has a root: {root_node}")
 
@@ -171,7 +170,7 @@ class Tree:
         """
         if self.empty:
             raise NodeNotFoundError("Tree is empty, no root can be found.")
-        return copy([node for node in self.nodes if node.parent is None][0])
+        return copy([node for node in self.nodes.values() if node.parent is None][0])
 
     def has_ancestor(self, node_id: str, ancestor_node_id: str) -> bool:
         """Test if ancestor_node is a parent of node
@@ -248,6 +247,9 @@ class Tree:
         # id
         new_nodes = {paste_node.id: paste_node}
         for node in other_tree.nodes.values():
+            if node.parent == None:
+                # This is the root node. We need to get rid of this
+                continue
             if node.parent == other_tree_root.id:
                 node.parent = node_id
             new_nodes[node.id] = node
@@ -508,6 +510,9 @@ class Tree:
         all_file_name: str = "all.txt",
         data_file_name: str = "data.txt",
     ):
+        if not out_dir.exists():
+            os.makedirs(out_dir, exist_ok=True)
+
         with (out_dir / all_file_name).open("w+") as stream:
             stream.writelines([f"{x}\n" for _, x in self.all_nodes()])
 
