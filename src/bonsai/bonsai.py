@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from copy import copy, deepcopy
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, TextIO
 from uuid import uuid4 as id
 
 
@@ -529,3 +529,28 @@ class Tree:
                 data = self.nodes[path[-1]].data
                 if data:
                     stream.writelines([f"{x}\n" for x in data])
+
+    def to_adjacency_matrix(self, out_stream: TextIO):
+        rows = self.all_nodes()
+        cols = self.all_nodes()
+
+        header = [""]  # the space for the rows
+        header.extend([x[0] for x in cols])
+        matrix = [header]  # start with the header
+        # It is important that we iterate in a row > col way,
+        # since we generate the matrix row-wise
+        for row_id, row_node in rows:
+            row = [row_id]
+            for col_id, _ in cols:
+                edge = 1 if row_node.parent == col_id else 0
+                row.append(edge)
+            matrix.append(row)
+
+        for row in matrix:
+            out_stream.write((",".join(map(str, row))) + "\n")
+
+    def to_node_list(self, out_stream: TextIO):
+        nodes = self.all_nodes()
+
+        for id, node in nodes:
+            out_stream.write(f"{id},{node.name},{node.data}\n")
