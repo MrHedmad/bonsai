@@ -6,6 +6,7 @@ from copy import copy, deepcopy
 from pathlib import Path
 from typing import Any, Optional, TextIO
 from uuid import uuid4 as id
+import json
 
 
 class IntegrityError(Exception):
@@ -549,8 +550,10 @@ class Tree:
         for row in matrix:
             out_stream.write((",".join(map(str, row))) + "\n")
 
-    def to_node_list(self, out_stream: TextIO):
+    def to_node_json(self, out_stream: TextIO):
         nodes = self.all_nodes()
-
+        data = {}
         for id, node in nodes:
-            out_stream.write(f"{id},{node.name},{node.data}\n")
+            data[id] = {"name": node.name, "data": node.data, "parent": node.parent}
+
+        json.dump(data, out_stream, indent=4)
