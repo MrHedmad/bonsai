@@ -5,6 +5,7 @@ import os
 from copy import copy, deepcopy
 from pathlib import Path
 from typing import Any, Optional, TextIO
+from collections.abc import ItemsView
 from uuid import uuid4 as id
 import json
 
@@ -66,7 +67,7 @@ class Node:
         """
         base = f"Node '{self.name}' <{self.id}>"
         if self.data:
-            base += f" + data"
+            base += " + data"
         if self.parent:
             base += f" parent: <{self.parent}>"
 
@@ -82,7 +83,7 @@ class Tree:
         """Is the tree empty?"""
         return len(self.nodes) == 0
 
-    def all_nodes(self):
+    def all_nodes(self) -> ItemsView[str, Node]:
         """Get an iterator to all node_id: node pairs"""
         return copy(self.nodes).items()
 
@@ -502,6 +503,15 @@ class Tree:
             i += 1
         return i
 
+    def get_direct_children(self, node_id: str) -> list[Node]:
+        """Get a list of the direct children of this node"""
+        result = []
+        for _, node in self.all_nodes():
+            if node.parent == node_id:
+                result.append(node)
+
+        return result
+
     def __str__(self) -> str:
         return f"Tree with {len(self.nodes)} nodes"
 
@@ -553,7 +563,37 @@ class Tree:
     def to_node_json(self, out_stream: TextIO):
         nodes = self.all_nodes()
         data = {}
-        for id, node in nodes:
-            data[id] = {"name": node.name, "data": node.data, "parent": node.parent}
+        for node_id, node in nodes:
+            data[node_id] = {"name": node.name, "data": node.data, "parent": node.parent}
 
         json.dump(data, out_stream, indent=4)
+
+    def to_representation(self, out_stream: TextIO):
+        """Generate a tree-like string representation of this bonsai
+
+        Shamelessly stolen and adapted from 
+        https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python
+        since I'm too stupid to do it by my own.
+
+        :<
+        """
+        CONT_INDENT = "│   "
+        SPLIT_MID = "├── "
+        SPLIT_END = "└── "
+        INDENT = "    "
+   
+        def print_layer(parent_node_id: str, prefix = ""):
+            children = self.get_direct_children(parent_node_id)
+
+            pointers = [SPLIT_MID] * (len(children) - 1) + [SPLIT_END]
+            for pointer, child in zip(pointers, children):
+                yield prefix + pointer + (child.name or child.id)
+                if not self.is_leaf(child.id):
+                    extension = CONT_INDENT if pointer == SPLIT_MID else INDENT
+                    yield from print_layer(child.id, prefix=prefix + extension)
+
+        
+        layers = list(print_layer(self.root.id))
+
+        out_stream.write("\n".join([self.root.name or self.root.id] + layers))
+
