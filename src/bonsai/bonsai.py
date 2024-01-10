@@ -568,7 +568,7 @@ class Tree:
 
         json.dump(data, out_stream, indent=4)
 
-    def to_representation(self, out_stream: TextIO):
+    def to_representation(self, out_stream: TextIO, force_uuid = False):
         """Generate a tree-like string representation of this bonsai
 
         Shamelessly stolen and adapted from 
@@ -581,13 +581,18 @@ class Tree:
         SPLIT_MID = "├── "
         SPLIT_END = "└── "
         INDENT = "    "
+
+        def get_repr(node: Node) -> str:
+            if force_uuid:
+                return node.id
+            return node.name or node.id
    
         def print_layer(parent_node_id: str, prefix = ""):
             children = self.get_direct_children(parent_node_id)
 
             pointers = [SPLIT_MID] * (len(children) - 1) + [SPLIT_END]
             for pointer, child in zip(pointers, children):
-                yield prefix + pointer + (child.name or child.id)
+                yield prefix + pointer + get_repr(child)
                 if not self.is_leaf(child.id):
                     extension = CONT_INDENT if pointer == SPLIT_MID else INDENT
                     yield from print_layer(child.id, prefix=prefix + extension)
@@ -595,5 +600,5 @@ class Tree:
         
         layers = list(print_layer(self.root.id))
 
-        out_stream.write("\n".join([self.root.name or self.root.id] + layers))
+        out_stream.write("\n".join([get_repr(self.root)] + layers))
 
