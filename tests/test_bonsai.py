@@ -72,3 +72,23 @@ def test_to_node_json():
 
     # TODO: write an actual check here.
     assert True
+
+def test_from_node_json():
+    tree = Tree()
+
+    node_ids = []
+
+    node_ids.append(tree.create_node("root", None, ["a", "b", "c"]))
+    node_ids.append(tree.create_node("node1", node_ids[0], ["d", "e"]))
+    node_ids.append(tree.create_node("node2", node_ids[1]))
+
+    repr = io.StringIO()
+    
+    tree.to_node_json(repr)
+    repr.seek(0)
+    
+    data = json.load(repr)
+    new_tree = Tree.from_node_json(data)
+
+    assert tree.nodes == new_tree.nodes
+

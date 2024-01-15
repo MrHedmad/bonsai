@@ -73,10 +73,31 @@ class Node:
 
         return base
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Node):
+            raise NotImplementedError("Cannot compare a Node and a non-Node")
+        if self.parent != other.parent:
+            return False
+        if self.name != other.name:
+            return False
+        if self.data != other.data:
+            return False
+        return True
+
 
 class Tree:
     def __init__(self) -> None:
         self.nodes = {}
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Tree):
+            raise NotImplementedError("Cannot compare a tree and a non-tree")
+        for key, value in self.nodes:
+            if key not in other.nodes.keys():
+                return False
+            if value != other.nodes[key]:
+                return False
+        return True
 
     @property
     def empty(self) -> bool:
@@ -602,3 +623,18 @@ class Tree:
 
         out_stream.write("\n".join([get_repr(self.root)] + layers))
 
+    @staticmethod
+    def from_node_json(data: dict) -> Tree:
+        """Create a tree from its JSON representation
+
+        This does the inverse of `to_node_json`.
+        """
+        new_nodes = {}
+        for key, value in data.items():
+            new_nodes[key] = Node(parent = value.get("parent"),data =value.get("data"), name = value.get("name"))
+        
+        new = Tree()
+        new.nodes = new_nodes
+        new.check_integrity()
+
+        return new
