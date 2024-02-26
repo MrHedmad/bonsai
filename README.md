@@ -1,8 +1,18 @@
-# Bonsai
+<div align="center">
+  
+<img src='https://raw.githubusercontent.com/MrHedmad/bonsai/main/docs/resources/logo.png' width='200'>
 
+</div>
+
+<br/><br/>
 This package contains a very tiny implementation of a directed tree, where each node contains list-like data.
 
-## Usage
+## Install
+```bash
+pip install git+https://github.com/MrHedmad/bonsai.git
+```
+
+## Use
 ```py
 from bonsai import Tree
 
@@ -33,6 +43,7 @@ Once the tree has some nodes, you can run manipulations on it:
   - `get_one_node_named(name)`: Get a single node with name `name`, or die trying.
   - `leaves`: Get a list of all leaf nodes in the tree.
   - `get_parent(node_id)`: Get the parent node of `node_id`.
+  - `get_path_of(node_id)`: Get a list of IDs from the root to the `node_id`, included.
   - `get_paths()`: Get all paths from the root to all the leaves, as a list of tuples.
   - `get_direct_children(node_id)`: Get all the children of the node at depth = 1.
 - Update the information of existing nodes:
