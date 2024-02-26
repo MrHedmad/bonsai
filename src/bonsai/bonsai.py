@@ -478,29 +478,44 @@ class Tree:
         if self.empty:
             raise ValueError("The tree is empty. Nothing to give the paths of.")
 
-        root_id = self.root.id
         paths = []
 
         # For every node, get the full path to the parent.
         for node in self.nodes.values():
-            path = []
-            current_id = node.id
-
-            while True:
-                path.append(current_id)
-                if current_id == root_id:
-                    # This is the root node, we are at the root
-                    break
-                # This node should have a parent
-                current_node = self.get_parent(current_id)
-                assert current_node is not None, "The tree seems to be broken..."
-                current_id = current_node.id
-
-            # We made the path from the leaf to the root. We need the inverse.
-            path.reverse()
+            path = self.get_path_of(node.id)
             paths.append(path)
 
         return paths
+
+
+    def get_path_of(self, node_id: str) -> tuple[str]:
+        """Get the path to the node, as a tuple of IDs, from the root.
+
+        Args:
+            node_id (str): The node to get the path to
+
+        Returns:
+            tuple[str]: The (ordered) list of IDs from the root to the path.
+        """
+        root_id = self.root.id
+        path = []
+        current_id = node_id
+
+        while True:
+            path.append(current_id)
+            if current_id == root_id:
+                # This is the root node, we are at the root
+                break
+            # This node should have a parent
+            current_node = self.get_parent(current_id)
+            assert current_node is not None, "The tree seems to be broken..."
+            current_id = current_node.id
+
+        # We made the path from the leaf to the root. We need the inverse.
+        path.reverse()
+
+        return path
+
 
     def depth_of(self, node_id: str) -> int:
         """Get the number of edges to follow to get to the node from the root
