@@ -646,7 +646,9 @@ class Tree:
         """
         new_nodes = {}
         for key, value in data.items():
-            new_nodes[key] = Node(parent = value.get("parent"),data =value.get("data"), name = value.get("name"))
+            node = Node(parent = value.get("parent"),data =value.get("data"), name = value.get("name"))
+            node.id = key
+            new_nodes[key] = node 
         
         new = Tree()
         new.nodes = new_nodes
