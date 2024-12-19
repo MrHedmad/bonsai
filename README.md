@@ -41,6 +41,7 @@ Once the tree has some nodes, you can run manipulations on it:
   - `root`: Get the root of the tree. 
   - `get_nodes_named(name)`: Get a list of nodes with `name`.
   - `get_one_node_named(name)`: Get a single node with name `name`, or die trying.
+  - `get_children_named(parent_id, name)`: Get all children of the node `parent_id` which are named `name`. 
   - `leaves`: Get a list of all leaf nodes in the tree.
   - `get_parent(node_id)`: Get the parent node of `node_id`.
   - `get_path_of(node_id)`: Get a list of IDs from the root to the `node_id`, included.
@@ -60,3 +61,5 @@ Once the tree has some nodes, you can run manipulations on it:
   - `to_representation(out_stream)`: Save a representation of the tree, like calling `tree` on a directory.
 - Load the tree from disk:
   - `from_node_list()`: Load a JSON file with the node data.
+
+You can also check if two trees are identical in shape, node name and content with `compare_trees`.

@@ -1,13 +1,14 @@
 """A tiny tree implementation"""
+
 from __future__ import annotations
 
+import json
 import os
+from collections.abc import ItemsView
 from copy import copy, deepcopy
 from pathlib import Path
 from typing import Any, Optional, TextIO
-from collections.abc import ItemsView
 from uuid import uuid4 as id
-import json
 
 
 class IntegrityError(Exception):
@@ -487,7 +488,6 @@ class Tree:
 
         return paths
 
-
     def get_path_of(self, node_id: str) -> tuple[str]:
         """Get the path to the node, as a tuple of IDs, from the root.
 
@@ -515,7 +515,6 @@ class Tree:
         path.reverse()
 
         return path
-
 
     def depth_of(self, node_id: str) -> int:
         """Get the number of edges to follow to get to the node from the root
@@ -600,14 +599,18 @@ class Tree:
         nodes = self.all_nodes()
         data = {}
         for node_id, node in nodes:
-            data[node_id] = {"name": node.name, "data": node.data, "parent": node.parent}
+            data[node_id] = {
+                "name": node.name,
+                "data": node.data,
+                "parent": node.parent,
+            }
 
         json.dump(data, out_stream, indent=4)
 
-    def to_representation(self, out_stream: TextIO, force_uuid = False):
+    def to_representation(self, out_stream: TextIO, force_uuid=False):
         """Generate a tree-like string representation of this bonsai
 
-        Shamelessly stolen and adapted from 
+        Shamelessly stolen and adapted from
         https://stackoverflow.com/questions/9727673/list-directory-tree-structure-in-python
         since I'm too stupid to do it by my own.
 
@@ -622,8 +625,8 @@ class Tree:
             if force_uuid:
                 return node.id
             return node.name or node.id
-   
-        def print_layer(parent_node_id: str, prefix = ""):
+
+        def print_layer(parent_node_id: str, prefix=""):
             children = self.get_direct_children(parent_node_id)
 
             pointers = [SPLIT_MID] * (len(children) - 1) + [SPLIT_END]
@@ -633,7 +636,6 @@ class Tree:
                     extension = CONT_INDENT if pointer == SPLIT_MID else INDENT
                     yield from print_layer(child.id, prefix=prefix + extension)
 
-        
         layers = list(print_layer(self.root.id))
 
         out_stream.write("\n".join([get_repr(self.root)] + layers))
@@ -646,12 +648,155 @@ class Tree:
         """
         new_nodes = {}
         for key, value in data.items():
-            node = Node(parent = value.get("parent"),data =value.get("data"), name = value.get("name"))
+            node = Node(
+                parent=value.get("parent"),
+                data=value.get("data"),
+                name=value.get("name"),
+            )
             node.id = key
-            new_nodes[key] = node 
-        
+            new_nodes[key] = node
+
         new = Tree()
         new.nodes = new_nodes
         new.check_integrity()
 
         return new
+
+    def get_children_named(self, parent_id: str, name: str) -> list[Node]:
+        """Get, as a list, all childrens of 'parent_id' named 'name'
+
+        Args:
+            parent_id: The UUID of the parent node to get the children of
+            name: The name of the children nodes to find.
+        """
+        childrens = self.get_direct_children(parent_id)
+        return _find(childrens, lambda x: x.name == name)
+
+
+class IncongruencyError(Exception):
+    """Raised when two trees are not identical"""
+
+    def __init__(self, location: str, inconsistency: str):
+        self.location = location
+        self.inconsistency = inconsistency
+
+    def __str__(self):
+        return f"Inconsistency error at {self.location}: {self.inconsistency}"
+
+
+def _which(iterable):
+    """Return which items in the iterable are True"""
+    enum = [i for i, x in enumerate(iterable) if x]
+    if len(enum) == 1:
+        return enum[0]
+    return enum
+
+
+def _find(items, fn):
+    """Find one and only one item in a list
+
+    The fn is a function that takes each item and returns True or False.
+    """
+    checks = [fn(x) for x in items]
+    if sum(checks) == 1:
+        return items[_which(checks)]
+    elif sum(checks) > 1:
+        raise RuntimeError("Found more than one matching item")
+    else:
+        raise RuntimeError("Item not found")
+
+
+def _check_two_way_congruency(list_1, list_2):
+    """Check if all items in list_1 are in list_2, and vice-versa"""
+    # Could probably forgo one check and check for len but whatever
+    if not all([x in list_2 for x in list_1]):
+        raise RuntimeError(
+            f"Did not find some items in list 1 inside list 2. Length of one: {len(list_1)} vs two {len(list_2)}"
+        )
+    if not all([x in list_1 for x in list_2]):
+        raise RuntimeError(
+            f"Did not find some items in list 2 inside list 1. Length of one: {len(list_1)} vs two {len(list_2)}"
+        )
+    return True
+
+
+def __get_location_of(tree: Tree, node_id):
+    # Wrapper to get a unique string for each location
+    path = tree.get_path_of(node_id)
+    names = [tree.nodes[x].name for x in path]
+    spath = ""
+    for name in names:
+        spath += name + "///"
+
+    return spath.strip("/")
+
+
+def compare_trees(one: Tree, two: Tree):
+    """Compare two trees for congruency.
+
+    A tree is compared with another for shape, node names and node content.
+    This function fails if all nodes are not named.
+
+    Args:
+        one (Tree): The first tree to be compared
+        two (Tree): The second tree to be compared
+
+    Returns:
+        True, if the two trees are identical.
+
+    Raises:
+        IncongruencyError(location, inconsistency): When a difference is detected.
+    """
+
+    def compare_childrens(parent_one_id, parent_two_id):
+        first_children = one.get_direct_children(parent_one_id)
+        second_children = two.get_direct_children(parent_two_id)
+        first_children_names = [one.nodes[x.id].name for x in first_children]
+        second_children_names = [two.nodes[x.id].name for x in second_children]
+
+        if not first_children and not second_children:
+            # There are no nodes to compare - the two parents are leaves.
+            # This is the safe exit condition of the recursion.
+            return
+        elif not first_children:
+            # There are second children but not first ones. Panic!
+            raise IncongruencyError(
+                __get_location_of(one, parent_one_id),
+                f"This node in the first tree should have children: {second_children_names}",
+            )
+        elif not second_children:
+            # Same, but reversed
+            raise IncongruencyError(
+                __get_location_of(two, parent_two_id),
+                f"This node in the second tree should have children: {first_children_names}",
+            )
+
+        if not len(first_children) == len(second_children):
+            raise IncongruencyError(
+                f"{one.nodes[parent_one_id].name} and {two.nodes[parent_two_id].name}",
+                f"Different number of children, {len(first_children)} vs {len(second_children)}: {first_children_names} vs {second_children_names}",
+            )
+
+        # It does not matter which of the two lists we check - they have the same length.
+        for child in first_children:
+            try:
+                sibling = _find(second_children, lambda x: x.name == child.name)
+            except RuntimeError as e:
+                raise IncongruencyError(
+                    f"{__get_location_of(one, child.id)}",
+                    f"could not locate sibling node: {str(e)}",
+                )
+
+            try:
+                _check_two_way_congruency(child.data, sibling.data)
+            except RuntimeError as e:
+                raise IncongruencyError(f"{__get_location_of(one, child.id)}", str(e))
+
+            # We are done comparing these children: they are identical.
+            # now, check in turn their children.
+            compare_childrens(child.id, sibling.id)
+
+    # Get the roots of the trees and start checking
+    compare_childrens(one.root.id, two.root.id)
+
+    return True
