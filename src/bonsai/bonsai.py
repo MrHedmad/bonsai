@@ -7,7 +7,7 @@ import os
 from collections.abc import ItemsView
 from copy import copy, deepcopy
 from pathlib import Path
-from typing import Any, Optional, TextIO
+from typing import Any, Optional, TextIO, Callable
 from uuid import uuid4 as id
 
 
@@ -32,6 +32,19 @@ class DoubleRootError(Exception):
 class NodeAmbiguityError(Exception):
     """Raised if an ambiguous node is selected."""
 
+class IdBuilder:
+    """A class whose instance can be used as a _id_fn for new Nodes
+
+    This class yields progressive numbers when any of its instances are
+    called, making it suitable to create new nodes in a tree.
+    """
+    # We uptick before returning the ID, and I want the first ID to be 0
+    current_id = -1
+
+    def __call__(self):
+        self.current_id += 1
+        return self.current_id
+
 
 class Node:
     """A class representing a node in the tree.
@@ -45,6 +58,8 @@ class Node:
         parent: Optional[str],
         name: Optional[str] = None,
         data: Optional[list[Any]] = None,
+        *,
+        _id_fn: Optional[Callable] = id
     ) -> None:
         """Builder for new nodes
 
@@ -54,8 +69,23 @@ class Node:
               defaults to the id of the node.
             data (list[Any], optional): List of data to store in the node.
               Defaults to None.
+
+        Internally, each node is given a unique UUID(4) as id.
+        You can overload this behaviour by passing to the `_id_fn` argument a
+        callable that generates a new ID (which will be cast to string).
+        If you do so, please note that:
+            - Each node MUST have a unique ID, different from all the other
+              nodes in a tree.
+            - Each node in two different trees that interact with each other
+              MUST have unique IDs.
+        Failure to do so will result in undefined behaviour, most likely an
+        error.
+
+        If you really want to, you can use the `IdBuilder` class from Bonsai
+        to generate progressive IDs during a single Python process.
+        This leads to truly identical trees between different runs.
         """
-        self.id = str(id())
+        self.id = str(_id_fn())
         self.name = name or self.id
         self.data = data
         self.parent = parent
@@ -87,8 +117,9 @@ class Node:
 
 
 class Tree:
-    def __init__(self) -> None:
+    def __init__(self, *, _id_fn: Optional[Callable] = id) -> None:
         self.nodes = {}
+        self._id_fn = _id_fn
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Tree):
@@ -143,7 +174,7 @@ class Tree:
         if parent and parent not in self.nodes:
             raise NodeNotFoundError(f"Cannot find parent node {parent} in current tree")
 
-        node = Node(parent=parent, name=name, data=data)
+        node = Node(parent=parent, name=name, data=data, _id_fn=self._id_fn)
         self.nodes[node.id] = node
 
         return node.id
